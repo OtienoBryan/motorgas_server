@@ -6,6 +6,13 @@ const stationController = require('../controllers/stationController');
 router.get('/', stationController.getAllStations);
 // Static/collection routes must come before parameterized routes
 router.get('/fuel-products', stationController.getFuelProducts);
+router.get('/inventory', stationController.getStationsInventory);
+router.get('/total-inventory', stationController.getTotalInventory);
+// Prices routes
+router.get('/:id/prices', stationController.getStationPrices);
+router.post('/:id/prices', stationController.addStationPrice);
+router.put('/:id/prices/:priceId', stationController.updateStationPrice);
+router.delete('/:id/prices/:priceId', stationController.deleteStationPrice);
 // Store routes
 router.get('/:id/store', stationController.getStationStore);
 router.post('/:id/store', stationController.updateStationStore);

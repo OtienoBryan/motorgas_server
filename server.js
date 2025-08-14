@@ -13,6 +13,7 @@ const branchController = require('./controllers/branchController');
 const serviceChargeController = require('./controllers/serviceChargeController');
 const noticeController = require('./controllers/noticeController');
 const stationRoutes = require('./routes/stationRoutes');
+const salesRoutes = require('./routes/salesRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -534,6 +535,7 @@ app.use((err, req, res, next) => {
 });
 
 app.use('/api/stations', stationRoutes);
+app.use('/api/sales', salesRoutes);
 
 app.get('/api/branches', branchController.getAllBranchesWithoutClient);
 app.get('/api/clients/:clientId/branches', branchController.getAllBranches);
