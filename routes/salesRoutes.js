@@ -23,6 +23,9 @@ router.get('/monthly', salesController.getMonthlySales);
 // Get daily sales trend for current month
 router.get('/daily-trend', salesController.getDailySalesTrend);
 
+// Get sales summaries grouped by date with filters
+router.get('/summaries', salesController.getSalesSummaries);
+
 // Get all sales across all stations
 router.get('/', salesController.getAllSales);
 

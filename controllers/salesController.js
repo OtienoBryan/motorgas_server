@@ -593,5 +593,86 @@ module.exports = {
       console.error('Error getting daily sales trend:', error);
       res.status(500).json({ message: 'Error getting daily sales trend', error: error.message });
     }
+  },
+
+  // Get sales summaries grouped by date with optional filters
+  getSalesSummaries: async (req, res) => {
+    try {
+      // Ensure sales table exists
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS sales (
+          id INT(11) NOT NULL AUTO_INCREMENT,
+          station_id INT(11) NOT NULL,
+          vehicle_id INT(11) NOT NULL,
+          client_id INT(11) NOT NULL,
+          quantity DECIMAL(11,2) NOT NULL,
+          unit_price DECIMAL(11,2) NOT NULL,
+          total_price DECIMAL(11,2) NOT NULL,
+          sale_date DATETIME NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          FOREIGN KEY (station_id) REFERENCES stations(id),
+          FOREIGN KEY (vehicle_id) REFERENCES branches(id),
+          FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+      `);
+
+      const { year, month, stationId, clientId, branchId } = req.query;
+
+      // Build query with filters
+      let query = `
+        SELECT 
+          DATE(s.sale_date) as date,
+          COUNT(*) as totalSales,
+          SUM(s.total_price) as totalRevenue,
+          SUM(s.quantity) as totalQuantity
+        FROM sales s
+        JOIN stations st ON s.station_id = st.id
+        JOIN branches b ON s.vehicle_id = b.id
+        JOIN clients c ON s.client_id = c.id
+        WHERE 1=1
+      `;
+      
+      const queryParams = [];
+
+      // Add year filter
+      if (year) {
+        query += ' AND YEAR(s.sale_date) = ?';
+        queryParams.push(parseInt(year));
+      }
+
+      // Add month filter
+      if (month) {
+        query += ' AND MONTH(s.sale_date) = ?';
+        queryParams.push(parseInt(month));
+      }
+
+      // Add station filter
+      if (stationId) {
+        query += ' AND s.station_id = ?';
+        queryParams.push(parseInt(stationId));
+      }
+
+      // Add client filter
+      if (clientId) {
+        query += ' AND c.id = ?';
+        queryParams.push(parseInt(clientId));
+      }
+
+      // Add branch filter
+      if (branchId) {
+        query += ' AND b.id = ?';
+        queryParams.push(parseInt(branchId));
+      }
+
+      query += ' GROUP BY DATE(s.sale_date) ORDER BY date ASC';
+
+      const [rows] = await db.query(query, queryParams);
+
+      res.json(rows);
+    } catch (error) {
+      console.error('Error getting sales summaries:', error);
+      res.status(500).json({ message: 'Error getting sales summaries', error: error.message });
+    }
   }
 };
