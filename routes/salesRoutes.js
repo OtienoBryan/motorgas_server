@@ -17,8 +17,13 @@ router.get('/station/:stationId/ledger', salesController.getStationStockLedger);
 // Add stock to station
 router.post('/station/:stationId/stock', salesController.addStationStock);
 
-// Get all sales across all stations
+// Get monthly sales data
 router.get('/monthly', salesController.getMonthlySales);
+
+// Get daily sales trend for current month
+router.get('/daily-trend', salesController.getDailySalesTrend);
+
+// Get all sales across all stations
 router.get('/', salesController.getAllSales);
 
 module.exports = router;

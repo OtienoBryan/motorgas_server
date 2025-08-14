@@ -505,5 +505,93 @@ module.exports = {
       console.error('Error getting monthly sales:', error);
       res.status(500).json({ message: 'Error getting monthly sales', error: error.message });
     }
+  },
+
+  // Get daily sales trend for current month
+  getDailySalesTrend: async (req, res) => {
+    try {
+      // Ensure sales table exists
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS sales (
+          id INT(11) NOT NULL AUTO_INCREMENT,
+          station_id INT(11) NOT NULL,
+          vehicle_id INT(11) NOT NULL,
+          client_id INT(11) NOT NULL,
+          quantity DECIMAL(11,2) NOT NULL,
+          unit_price DECIMAL(11,2) NOT NULL,
+          total_price DECIMAL(11,2) NOT NULL,
+          sale_date DATETIME NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          FOREIGN KEY (station_id) REFERENCES stations(id),
+          FOREIGN KEY (vehicle_id) REFERENCES branches(id),
+          FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+      `);
+
+      // Get date range from query parameters or default to current month
+      let startDate, endDate;
+      
+      if (req.query.startDate && req.query.endDate) {
+        startDate = new Date(req.query.startDate);
+        endDate = new Date(req.query.endDate);
+        // Set end date to end of day
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        // Default to current month
+        const currentDate = new Date();
+        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+      }
+
+      // Build query with optional station filter
+      let query = `
+        SELECT 
+          DATE(sale_date) as date,
+          COUNT(*) as salesCount,
+          SUM(total_price) as dailyRevenue,
+          SUM(quantity) as totalQuantity
+        FROM sales 
+        WHERE sale_date >= ? AND sale_date <= ?
+      `;
+      
+      const queryParams = [
+        startDate.toISOString().slice(0, 19).replace('T', ' '), 
+        endDate.toISOString().slice(0, 19).replace('T', ' ')
+      ];
+
+      // Add station filter if provided
+      if (req.query.stationId) {
+        query += ' AND station_id = ?';
+        queryParams.push(parseInt(req.query.stationId));
+      }
+
+      query += ' GROUP BY DATE(sale_date) ORDER BY date ASC';
+
+      const [rows] = await db.query(query, queryParams);
+
+      // Fill in missing dates with zero values
+      const dailyData = [];
+      const current = new Date(startDate);
+      
+      while (current <= endDate) {
+        const dateStr = current.toISOString().split('T')[0];
+        const existingData = rows.find(row => row.date.toISOString().split('T')[0] === dateStr);
+        
+        dailyData.push({
+          date: dateStr,
+          salesCount: existingData ? Number(existingData.salesCount) : 0,
+          dailyRevenue: existingData ? Number(existingData.dailyRevenue) : 0,
+          totalQuantity: existingData ? Number(existingData.totalQuantity) : 0
+        });
+        
+        current.setDate(current.getDate() + 1);
+      }
+
+      res.json(dailyData);
+    } catch (error) {
+      console.error('Error getting daily sales trend:', error);
+      res.status(500).json({ message: 'Error getting daily sales trend', error: error.message });
+    }
   }
 };
