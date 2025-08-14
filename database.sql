@@ -20,6 +20,21 @@ CREATE TABLE IF NOT EXISTS clients (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Create client_ledger table
+CREATE TABLE IF NOT EXISTS client_ledger (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  client_id INT NOT NULL,
+  amount_in DECIMAL(10, 2) DEFAULT 0,
+  amount_out DECIMAL(10, 2) DEFAULT 0,
+  balance DECIMAL(10, 2) NOT NULL,
+  reference VARCHAR(255),
+  date DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (client_id) REFERENCES clients(id),
+  INDEX idx_client_date (client_id, date),
+  INDEX idx_client_balance (client_id, balance)
+);
+
 -- Create service_types table
 CREATE TABLE IF NOT EXISTS service_types (
   id INT PRIMARY KEY AUTO_INCREMENT,

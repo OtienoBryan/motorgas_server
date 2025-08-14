@@ -21,24 +21,7 @@ CREATE TABLE IF NOT EXISTS requests (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- SOS table
-CREATE TABLE IF NOT EXISTS sos (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  sos_type ENUM('emergency', 'medical', 'security') NOT NULL,
-  latitude DECIMAL(10, 8) NOT NULL,
-  longitude DECIMAL(11, 8) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  staff_id INT,
-  status ENUM('pending', 'in_progress', 'resolved') DEFAULT 'pending',
-  comment TEXT,
-  FOREIGN KEY (staff_id) REFERENCES staff(id)
-);
 
--- Insert some test data
-INSERT INTO sos (sos_type, latitude, longitude, staff_id, status) VALUES
-('emergency', 51.5074, -0.1278, 1, 'pending'),
-('medical', 51.5074, -0.1278, 2, 'pending'),
-('security', 51.5074, -0.1278, 3, 'in_progress');
 
 CREATE TABLE IF NOT EXISTS teams (
   id INT PRIMARY KEY AUTO_INCREMENT,

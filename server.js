@@ -448,6 +448,14 @@ app.post('/api/clients', clientController.createClient);
 app.put('/api/clients/:id', clientController.updateClient);
 app.delete('/api/clients/:id', clientController.deleteClient);
 
+// Client ledger routes
+app.get('/api/clients/:clientId/ledger', clientController.getClientLedger);
+app.post('/api/clients/:clientId/ledger', clientController.addLedgerEntry);
+app.get('/api/clients/:clientId/balance', clientController.getClientBalance);
+
+// Test route for debugging
+app.get('/api/test/client-ledger-structure', clientController.testTableStructure);
+
 // Notice routes
 app.get('/api/notices', noticeController.getNotices);
 app.post('/api/notices', noticeController.createNotice);
@@ -455,58 +463,7 @@ app.patch('/api/notices/:id', noticeController.updateNotice);
 app.delete('/api/notices/:id', noticeController.deleteNotice);
 app.patch('/api/notices/:id/status', noticeController.toggleNoticeStatus);
 
-// SOS routes
-app.get('/api/sos', async (req, res) => {
-  try {
-    const query = `
-      SELECT s.*, st.name as guard_name
-      FROM sos s
-      LEFT JOIN staff st ON s.guard_id = st.id
-      ORDER BY s.created_at DESC
-    `;
-    
-    const [sosList] = await db.query(query);
-    res.json(sosList);
-  } catch (error) {
-    console.error('Error fetching SOS list:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
 
-app.patch('/api/sos/:id/status', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, comment } = req.body;
-
-    // Validate status
-    const validStatuses = ['pending', 'in_progress', 'resolved'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: 'Invalid status' });
-    }
-
-    const query = `
-      UPDATE sos 
-      SET status = ?,
-          comment = ?
-      WHERE id = ?
-    `;
-    
-    await db.query(query, [status, comment || null, id]);
-    
-    // Fetch updated SOS record
-    const [updatedSos] = await db.query(`
-      SELECT s.*, st.name as guard_name
-      FROM sos s
-      LEFT JOIN staff st ON s.guard_id = st.id
-      WHERE s.id = ?
-    `, [id]);
-
-    res.json(updatedSos[0]);
-  } catch (error) {
-    console.error('Error updating SOS status:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
 
 // Test endpoint
 app.get('/api/test', (req, res) => {

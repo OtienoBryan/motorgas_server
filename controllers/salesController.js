@@ -144,6 +144,48 @@ module.exports = {
           [stationId, 0, quantity, newBalance, formattedSaleDate, `Fuel sale - ${quantity}L to client ${clientId}, vehicle ${vehicleId}`]
         );
 
+        // Update client ledger - add the sale amount as amount_out (client owes this money)
+        // First, ensure client_ledger table exists
+        try {
+          await connection.query(`
+            CREATE TABLE IF NOT EXISTS client_ledger (
+              id INT PRIMARY KEY AUTO_INCREMENT,
+              client_id INT NOT NULL,
+              amount_in DECIMAL(10, 2) DEFAULT 0,
+              amount_out DECIMAL(10, 2) DEFAULT 0,
+              balance DECIMAL(10, 2) NOT NULL,
+              reference VARCHAR(255),
+              date DATETIME NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_client_date (client_id, date),
+              INDEX idx_client_balance (client_id, balance)
+            )
+          `);
+        } catch (tableError) {
+          // If table creation fails, continue (table might already exist)
+          console.log('Note: Could not create client_ledger table:', tableError.message);
+        }
+
+        // Get current client balance
+        const [clientBalanceRows] = await connection.query(
+          'SELECT balance FROM client_ledger WHERE client_id = ? ORDER BY date DESC, id DESC LIMIT 1',
+          [clientId]
+        );
+
+        let currentClientBalance = 0;
+        if (clientBalanceRows.length > 0) {
+          currentClientBalance = Number(clientBalanceRows[0].balance);
+        }
+
+        // Calculate new client balance (client owes more money)
+        const newClientBalance = currentClientBalance + Number(totalPrice);
+
+        // Insert client ledger entry
+        await connection.query(
+          'INSERT INTO client_ledger (client_id, amount_in, amount_out, balance, reference, date) VALUES (?, ?, ?, ?, ?, ?)',
+          [clientId, 0, totalPrice, newClientBalance, `Fuel sale - ${quantity}L at ${unitPrice}/L from station ${stationId}`, formattedSaleDate]
+        );
+
         await connection.commit();
 
         // Get the inserted sale record
