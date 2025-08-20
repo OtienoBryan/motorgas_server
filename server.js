@@ -17,6 +17,7 @@ const salesRoutes = require('./routes/salesRoutes');
 const stockTransferRoutes = require('./routes/stockTransferRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const staffLeaveRoutes = require('./routes/staffLeaveRoutes');
+const vehicleConversionRoutes = require('./routes/vehicleConversionRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -499,6 +500,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/stock-transfers', stockTransferRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/staff-leaves', staffLeaveRoutes);
+app.use('/api/vehicle-conversions', vehicleConversionRoutes);
 
 app.get('/api/branches', branchController.getAllBranchesWithoutClient);
 app.get('/api/clients/:clientId/branches', branchController.getAllBranches);
