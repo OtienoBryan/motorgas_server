@@ -716,5 +716,81 @@ module.exports = {
       console.error('Error getting sales summaries:', error);
       res.status(500).json({ message: 'Error getting sales summaries', error: error.message });
     }
+  },
+
+  // Get all sales for a specific client
+  getSalesByClient: async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { page = 1, limit = 50 } = req.query;
+      
+      const offset = (page - 1) * limit;
+
+      // Ensure sales table exists
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS sales (
+          id INT(11) NOT NULL AUTO_INCREMENT,
+          station_id INT(11) NOT NULL,
+          vehicle_id INT(11) NOT NULL,
+          client_id INT(11) NOT NULL,
+          quantity DECIMAL(11,2) NOT NULL,
+          unit_price DECIMAL(11,2) NOT NULL,
+          total_price DECIMAL(11,2) NOT NULL,
+          sale_date DATETIME NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          FOREIGN KEY (station_id) REFERENCES stations(id),
+          FOREIGN KEY (vehicle_id) REFERENCES branches(id),
+          FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+      `);
+
+      // Get total count
+      const [countRows] = await db.query(
+        'SELECT COUNT(*) as total FROM sales WHERE client_id = ?',
+        [clientId]
+      );
+      const total = countRows[0].total;
+
+      // Get sales with station and vehicle details
+      const [salesRows] = await db.query(`
+        SELECT 
+          s.id,
+          s.station_id,
+          s.vehicle_id,
+          s.client_id,
+          s.quantity,
+          s.unit_price,
+          s.total_price,
+          s.sale_date,
+          s.created_at,
+          st.name as station_name,
+          st.address as station_address,
+          b.name as vehicle_name,
+          b.address as vehicle_address
+        FROM sales s
+        JOIN stations st ON s.station_id = st.id
+        JOIN branches b ON s.vehicle_id = b.id
+        WHERE s.client_id = ?
+        ORDER BY s.sale_date DESC
+        LIMIT ? OFFSET ?
+      `, [clientId, parseInt(limit), offset]);
+
+      // Calculate total pages
+      const totalPages = Math.ceil(total / limit);
+
+      res.json({
+        sales: salesRows,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: totalPages
+        }
+      });
+    } catch (error) {
+      console.error('Error getting sales by client:', error);
+      res.status(500).json({ message: 'Error getting sales by client', error: error.message });
+    }
   }
 };

@@ -29,4 +29,7 @@ router.get('/summaries', salesController.getSalesSummaries);
 // Get all sales across all stations
 router.get('/', salesController.getAllSales);
 
+// Get all sales for a specific client
+router.get('/client/:clientId', salesController.getSalesByClient);
+
 module.exports = router;
