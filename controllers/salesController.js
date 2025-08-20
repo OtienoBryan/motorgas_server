@@ -792,5 +792,176 @@ module.exports = {
       console.error('Error getting sales by client:', error);
       res.status(500).json({ message: 'Error getting sales by client', error: error.message });
     }
+  },
+
+  // Get all sales for a specific date
+  getSalesByDate: async (req, res) => {
+    try {
+      const { date } = req.params;
+      const { stationId, clientId, branchId } = req.query;
+      
+      console.log('🔍 Backend: getSalesByDate called with:', { date, stationId, clientId, branchId });
+      
+      // Ensure sales table exists
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS sales (
+          id INT(11) NOT NULL AUTO_INCREMENT,
+          station_id INT(11) NOT NULL,
+          vehicle_id INT(11) NOT NULL,
+          client_id INT(11) NOT NULL,
+          quantity DECIMAL(11,2) NOT NULL,
+          unit_price DECIMAL(11,2) NOT NULL,
+          total_price DECIMAL(11,2) NOT NULL,
+          sale_date DATETIME NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          FOREIGN KEY (station_id) REFERENCES stations(id),
+          FOREIGN KEY (vehicle_id) REFERENCES branches(id),
+          FOREIGN KEY (client_id) REFERENCES clients(id)
+        )
+      `);
+
+      // Check if there are any sales records at all
+      const [allSales] = await db.query('SELECT COUNT(*) as total FROM sales');
+      console.log('🔍 Backend: Total sales records in database:', allSales[0].total);
+      
+      if (allSales[0].total === 0) {
+        console.log('🔍 Backend: No sales records found in database');
+        return res.json({
+          sales: [],
+          summary: {
+            date,
+            totalSales: 0,
+            totalRevenue: 0,
+            totalQuantity: 0
+          }
+        });
+      }
+
+      // Check what dates are available in sales table
+      const [availableDates] = await db.query('SELECT DISTINCT DATE(sale_date) as date FROM sales ORDER BY date DESC LIMIT 5');
+      console.log('🔍 Backend: Available dates in sales table:', availableDates);
+
+      // Build query with filters
+      let query = `
+        SELECT 
+          s.id,
+          s.station_id,
+          s.vehicle_id,
+          s.client_id,
+          s.quantity,
+          s.unit_price,
+          s.total_price,
+          s.sale_date,
+          s.created_at,
+          st.name as station_name,
+          st.address as station_address,
+          b.name as vehicle_name,
+          b.address as vehicle_address,
+          c.name as client_name,
+          c.email as client_email
+        FROM sales s
+        JOIN stations st ON s.station_id = st.id
+        JOIN branches b ON s.vehicle_id = b.id
+        JOIN clients c ON s.client_id = c.id
+        WHERE DATE(s.sale_date) = ?
+      `;
+      
+      const queryParams = [date];
+      console.log('🔍 Backend: Query params:', queryParams);
+
+      // Add station filter
+      if (stationId) {
+        query += ' AND s.station_id = ?';
+        queryParams.push(parseInt(stationId));
+      }
+
+      // Add client filter
+      if (clientId) {
+        query += ' AND s.client_id = ?';
+        queryParams.push(parseInt(clientId));
+      }
+
+      // Add branch filter
+      if (branchId) {
+        query += ' AND s.vehicle_id = ?';
+        queryParams.push(parseInt(branchId));
+      }
+
+      query += ' ORDER BY s.sale_date DESC';
+      console.log('🔍 Backend: Final query:', query);
+
+      const [salesRows] = await db.query(query, queryParams);
+      console.log('🔍 Backend: Query result - rows found:', salesRows.length);
+      console.log('🔍 Backend: First few rows:', salesRows.slice(0, 2));
+
+      // Calculate summary totals
+      const totalSales = salesRows.length;
+      const totalRevenue = salesRows.reduce((sum, sale) => sum + Number(sale.total_price), 0);
+      const totalQuantity = salesRows.reduce((sum, sale) => sum + Number(sale.quantity), 0);
+
+      const response = {
+        sales: salesRows,
+        summary: {
+          date,
+          totalSales,
+          totalRevenue,
+          totalQuantity
+        }
+      };
+      
+      console.log('🔍 Backend: Sending response:', response);
+      res.json(response);
+    } catch (error) {
+      console.error('❌ Backend: Error getting sales by date:', error);
+      res.status(500).json({ message: 'Error getting sales by date', error: error.message });
+    }
+  },
+
+  // Test method to check sales data
+  testSalesData: async (req, res) => {
+    try {
+      console.log('🧪 Backend: Testing sales data...');
+      
+      // Check if sales table exists and has data
+      const [tableCheck] = await db.query('SHOW TABLES LIKE "sales"');
+      console.log('🧪 Backend: Sales table exists:', tableCheck.length > 0);
+      
+      if (tableCheck.length === 0) {
+        return res.json({ message: 'Sales table does not exist' });
+      }
+      
+      // Count total sales
+      const [countResult] = await db.query('SELECT COUNT(*) as total FROM sales');
+      const totalSales = countResult[0].total;
+      console.log('🧪 Backend: Total sales records:', totalSales);
+      
+      if (totalSales === 0) {
+        return res.json({ 
+          message: 'Sales table exists but has no data',
+          totalSales: 0,
+          availableDates: []
+        });
+      }
+      
+      // Get sample sales data
+      const [sampleSales] = await db.query('SELECT * FROM sales LIMIT 3');
+      console.log('🧪 Backend: Sample sales:', sampleSales);
+      
+      // Get available dates
+      const [datesResult] = await db.query('SELECT DISTINCT DATE(sale_date) as date FROM sales ORDER BY date DESC LIMIT 10');
+      console.log('🧪 Backend: Available dates:', datesResult);
+      
+      res.json({
+        message: 'Sales data found',
+        totalSales,
+        sampleSales,
+        availableDates: datesResult.map(d => d.date)
+      });
+      
+    } catch (error) {
+      console.error('❌ Backend: Error testing sales data:', error);
+      res.status(500).json({ message: 'Error testing sales data', error: error.message });
+    }
   }
 };

@@ -32,4 +32,10 @@ router.get('/', salesController.getAllSales);
 // Get all sales for a specific client
 router.get('/client/:clientId', salesController.getSalesByClient);
 
+// Get all sales for a specific date
+router.get('/date/:date', salesController.getSalesByDate);
+
+// Test route to check sales data
+router.get('/test', salesController.testSalesData);
+
 module.exports = router;
