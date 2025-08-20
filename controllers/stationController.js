@@ -42,11 +42,11 @@ const stationController = {
   },
 
   createStation: async (req, res) => {
-    const { name, address, phone, email } = req.body;
+    const { name, address, phone, email, latitude, longitude } = req.body;
     try {
       const [result] = await db.query(
-        'INSERT INTO stations (name, address, phone, email) VALUES (?, ?, ?, ?)',
-        [name, address, phone, email]
+        'INSERT INTO stations (name, address, phone, email, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, address, phone, email, latitude, longitude]
       );
       const [newStation] = await db.query('SELECT * FROM stations WHERE id = ?', [result.insertId]);
       res.status(201).json(newStation[0]);
@@ -57,11 +57,11 @@ const stationController = {
   },
 
   updateStation: async (req, res) => {
-    const { name, address, phone, email } = req.body;
+    const { name, address, phone, email, latitude, longitude } = req.body;
     try {
       await db.query(
-        'UPDATE stations SET name = ?, address = ?, phone = ?, email = ? WHERE id = ?',
-        [name, address, phone, email, req.params.id]
+        'UPDATE stations SET name = ?, address = ?, phone = ?, email = ?, latitude = ?, longitude = ? WHERE id = ?',
+        [name, address, phone, email, latitude, longitude, req.params.id]
       );
       const [updatedStation] = await db.query('SELECT * FROM stations WHERE id = ?', [req.params.id]);
       if (updatedStation.length === 0) {
