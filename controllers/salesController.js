@@ -11,6 +11,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -19,7 +20,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -219,6 +222,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -227,7 +231,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -253,6 +259,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -261,7 +268,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -513,6 +522,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -521,7 +531,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -559,6 +571,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -567,7 +580,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -647,6 +662,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -655,7 +671,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -733,6 +751,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -741,7 +760,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 
@@ -794,6 +815,181 @@ module.exports = {
     }
   },
 
+  // Get attendant performance data
+  getAttendantPerformance: async (req, res) => {
+    try {
+      const { year, month, staffId } = req.query;
+
+      // First, ensure sales table has staff_id column
+      try {
+        // Check if staff_id column exists
+        const [columns] = await db.query('DESCRIBE sales');
+        const hasStaffId = columns.some(col => col.Field === 'staff_id');
+        
+        if (!hasStaffId) {
+          // Add staff_id column
+          await db.query('ALTER TABLE sales ADD COLUMN staff_id INT(11) NULL');
+        }
+        
+        // Try to add index (will fail if already exists)
+        try {
+          await db.query('ALTER TABLE sales ADD INDEX idx_staff_id (staff_id)');
+        } catch (indexError) {
+          console.log('Index already exists or error occurred:', indexError.message);
+        }
+        
+        // Try to add foreign key constraint (will fail if already exists)
+        try {
+          await db.query(`
+            ALTER TABLE sales 
+            ADD CONSTRAINT fk_sales_staff 
+            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
+          `);
+        } catch (constraintError) {
+          console.log('Foreign key constraint already exists or error occurred:', constraintError.message);
+        }
+      } catch (alterError) {
+        console.log('Table structure update error:', alterError.message);
+      }
+
+      // Build query for attendant performance
+      let query = `
+        SELECT 
+          COALESCE(s.staff_id, 0) as staffId,
+          COALESCE(st.name, 'Unknown Attendant') as staffName,
+          COUNT(*) as totalSales,
+          SUM(s.total_price) as totalRevenue,
+          SUM(s.quantity) as totalQuantity,
+          SUM(s.total_price * 0.16) as totalTax,
+          AVG(s.total_price) as averageSaleValue
+        FROM sales s
+        LEFT JOIN staff st ON s.staff_id = st.id
+        WHERE 1=1
+      `;
+      
+      const queryParams = [];
+
+      // Add year filter
+      if (year) {
+        query += ' AND YEAR(s.sale_date) = ?';
+        queryParams.push(parseInt(year));
+      }
+
+      // Add month filter
+      if (month) {
+        query += ' AND MONTH(s.sale_date) = ?';
+        queryParams.push(parseInt(month));
+      }
+
+      // Add staff filter
+      if (staffId) {
+        query += ' AND s.staff_id = ?';
+        queryParams.push(parseInt(staffId));
+      }
+
+      query += ' GROUP BY s.staff_id, st.name ORDER BY totalRevenue DESC';
+
+      const [performanceRows] = await db.query(query, queryParams);
+
+      // Get daily performance data
+      let dailyQuery = `
+        SELECT 
+          DATE(s.sale_date) as date,
+          COUNT(*) as totalSales,
+          SUM(s.total_price) as totalRevenue,
+          SUM(s.quantity) as totalQuantity,
+          SUM(s.total_price * 0.16) as totalTax
+        FROM sales s
+        WHERE 1=1
+      `;
+      
+      const dailyParams = [];
+
+      // Add year filter
+      if (year) {
+        dailyQuery += ' AND YEAR(s.sale_date) = ?';
+        dailyParams.push(parseInt(year));
+      }
+
+      // Add month filter
+      if (month) {
+        dailyQuery += ' AND MONTH(s.sale_date) = ?';
+        dailyParams.push(parseInt(month));
+      }
+
+      // Add staff filter
+      if (staffId) {
+        dailyQuery += ' AND s.staff_id = ?';
+        dailyParams.push(parseInt(staffId));
+      }
+
+      dailyQuery += ' GROUP BY DATE(s.sale_date) ORDER BY date ASC';
+
+      const [dailyRows] = await db.query(dailyQuery, dailyParams);
+
+      res.json({
+        performance: performanceRows,
+        dailyPerformance: dailyRows
+      });
+    } catch (error) {
+      console.error('Error getting attendant performance:', error);
+      res.status(500).json({ message: 'Error getting attendant performance', error: error.message });
+    }
+  },
+
+  // Get detailed sales for a specific attendant
+  getAttendantSales: async (req, res) => {
+    try {
+      const { year, month, staffId } = req.query;
+
+      if (!staffId) {
+        return res.status(400).json({ message: 'staffId is required' });
+      }
+
+      // Build query for attendant sales
+      let query = `
+        SELECT 
+          s.id,
+          s.sale_date,
+          st.name as station_name,
+          c.name as client_name,
+          s.quantity,
+          s.unit_price,
+          s.total_price,
+          (s.total_price * 0.16) as tax
+        FROM sales s
+        LEFT JOIN stations st ON s.station_id = st.id
+        LEFT JOIN clients c ON s.client_id = c.id
+        WHERE s.staff_id = ?
+      `;
+      
+      const queryParams = [parseInt(staffId)];
+
+      // Add year filter
+      if (year) {
+        query += ' AND YEAR(s.sale_date) = ?';
+        queryParams.push(parseInt(year));
+      }
+
+      // Add month filter
+      if (month) {
+        query += ' AND MONTH(s.sale_date) = ?';
+        queryParams.push(parseInt(month));
+      }
+
+      query += ' ORDER BY s.sale_date DESC';
+
+      const [salesRows] = await db.query(query, queryParams);
+
+      res.json({
+        sales: salesRows
+      });
+    } catch (error) {
+      console.error('Error getting attendant sales:', error);
+      res.status(500).json({ message: 'Error getting attendant sales', error: error.message });
+    }
+  },
+
   // Get all sales for a specific date
   getSalesByDate: async (req, res) => {
     try {
@@ -809,6 +1005,7 @@ module.exports = {
           station_id INT(11) NOT NULL,
           vehicle_id INT(11) NOT NULL,
           client_id INT(11) NOT NULL,
+          staff_id INT(11) NULL,
           quantity DECIMAL(11,2) NOT NULL,
           unit_price DECIMAL(11,2) NOT NULL,
           total_price DECIMAL(11,2) NOT NULL,
@@ -817,7 +1014,9 @@ module.exports = {
           PRIMARY KEY (id),
           FOREIGN KEY (station_id) REFERENCES stations(id),
           FOREIGN KEY (vehicle_id) REFERENCES branches(id),
-          FOREIGN KEY (client_id) REFERENCES clients(id)
+          FOREIGN KEY (client_id) REFERENCES clients(id),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+          INDEX idx_staff_id (staff_id)
         )
       `);
 

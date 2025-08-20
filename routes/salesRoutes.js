@@ -35,6 +35,12 @@ router.get('/client/:clientId', salesController.getSalesByClient);
 // Get all sales for a specific date
 router.get('/date/:date', salesController.getSalesByDate);
 
+// Get attendant performance data
+router.get('/attendant-performance', salesController.getAttendantPerformance);
+
+// Get detailed sales for a specific attendant
+router.get('/attendant-sales', salesController.getAttendantSales);
+
 // Test route to check sales data
 router.get('/test', salesController.testSalesData);
 
